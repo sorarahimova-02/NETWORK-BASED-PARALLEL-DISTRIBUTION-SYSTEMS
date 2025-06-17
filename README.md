@@ -1,6 +1,4 @@
-# sql-server-projects
-SQL Server Projects – Backup, Performance and Security
-
+#NETWORK-BASED PARALLEL DISTRIBUTION SYSTEMS
 This repository includes three practical SQL Server projects developed using SQL Server Management Studio (SSMS). Each project includes real-world SQL tasks such as query optimization, backup and recovery, and database security practices.
 
 Project 1 – Performance Optimization and Monitoring
