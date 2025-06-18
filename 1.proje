@@ -1,0 +1,171 @@
+﻿--Tum tablolari listeledi
+
+SELECT TABLE_SCHEMA, TABLE_NAME
+FROM INFORMATION_SCHEMA.TABLES
+WHERE TABLE_TYPE = 'BASE TABLE'
+ORDER BY TABLE_SCHEMA, TABLE_NAME;
+
+--kontrol etmek icin sadece 10 tane ornek gosterildi
+SELECT TOP 10 * FROM Sales.Orders;
+
+
+-- 1. En çok CPU harcayan sorgular
+SELECT TOP 10 
+    total_worker_time / execution_count AS Avg_CPU_Time,
+    execution_count,
+    total_worker_time,
+    SUBSTRING(qt.text, (qs.statement_start_offset/2)+1,
+        ((CASE qs.statement_end_offset
+          WHEN -1 THEN DATALENGTH(qt.text)
+         ELSE qs.statement_end_offset END
+         - qs.statement_start_offset)/2)+1)
+FROM sys.dm_exec_query_stats qs
+CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) qt
+ORDER BY Avg_CPU_Time DESC;
+
+
+
+--2.Gorev en az kullanilan
+
+SELECT 
+    OBJECT_NAME(i.object_id) AS TableName,
+    i.name AS IndexName,
+    i.index_id,
+    s.user_seeks, s.user_scans, s.user_lookups, s.user_updates
+FROM 
+    sys.indexes AS i
+LEFT JOIN 
+    sys.dm_db_index_usage_stats AS s
+    ON i.object_id = s.object_id AND i.index_id = s.index_id
+WHERE 
+    OBJECTPROPERTY(i.object_id,'IsUserTable') = 1
+    AND i.name IS NOT NULL
+ORDER BY 
+    s.user_seeks + s.user_scans + s.user_lookups ASC;
+
+
+
+
+-- Silme işlemi yapmadan önce: emin olmak için indexin tanımına bakmakta fayda var:
+
+EXEC sp_helpindex 'Warehouse.Colors_Archive';
+
+
+
+--Örnek olarak ix_Colors_Archive adlı indeks kullanılmamış gibi görünüyor:
+DROP INDEX ix_Colors_Archive ON Warehouse.Colors_Archive;
+
+
+
+
+--2.3. Performans Artırıcı Yeni İndeks Oluşturma
+
+CREATE NONCLUSTERED INDEX IX_Orders_CustomerID_OrderDate
+ON Sales.Orders (CustomerID, OrderDate);
+
+
+
+
+
+
+------------------------------------------------------------------------------------------
+--3. Sorgu İyileştirme Uzun süren sorguları tespit:
+
+SELECT TOP 5 
+    total_elapsed_time / execution_count AS AvgTime,
+    execution_count,
+    total_elapsed_time,
+    SUBSTRING(qt.text, (qs.statement_start_offset/2)+1,
+        ((CASE qs.statement_end_offset
+          WHEN -1 THEN DATALENGTH(qt.text)
+         ELSE qs.statement_end_offset END
+         - qs.statement_start_offset)/2)+1)
+FROM sys.dm_exec_query_stats qs
+CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) qt
+ORDER BY AvgTime DESC;
+
+
+
+
+
+
+
+-- Optimize Edilmiş Hali:
+SELECT * FROM Sales.Orders
+WHERE OrderDate >= '2015-01-01' AND OrderDate < '2016-01-01';
+
+
+-- 4.  Disk Alanı ve Veri Yoğunluğu Yönetimi
+SELECT 
+    t.NAME AS TableName,
+    SUM(p.rows) AS RowCounts,
+    SUM(a.total_pages) * 8 AS TotalSpaceKB,
+    SUM(a.used_pages) * 8 AS UsedSpaceKB,
+    (SUM(a.total_pages) - SUM(a.used_pages)) * 8 AS UnusedSpaceKB
+FROM 
+    sys.tables t
+INNER JOIN 
+    sys.indexes i ON t.OBJECT_ID = i.object_id
+INNER JOIN 
+    sys.partitions p ON i.object_id = p.OBJECT_ID AND i.index_id = p.index_id
+INNER JOIN 
+    sys.allocation_units a ON p.partition_id = a.container_id
+GROUP BY 
+    t.NAME
+ORDER BY 
+    TotalSpaceKB DESC;
+
+
+
+
+-- 5. Erişim Yönetimi (Roller) Kullanıcı oluştur ve rol ata:
+
+
+CREATE LOGIN testuser WITH PASSWORD = 'StrongP@ssw0rd!';
+CREATE USER testuser FOR LOGIN testuser;
+EXEC sp_addrolemember 'db_datareader', 'testuser';  -- sadece okuma yetkisi
+
+
+
+--Kullanıcıyı Görüntüleme:
+
+SELECT name, type_desc FROM sys.database_principals WHERE name = 'testuser';
+
+
+
+
+--Şifre Güncelleme:
+
+ALTER LOGIN testuser WITH PASSWORD = 'NewSecureP@ssw0rd!';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
