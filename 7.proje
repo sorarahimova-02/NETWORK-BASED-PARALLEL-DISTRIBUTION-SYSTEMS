@@ -1,0 +1,66 @@
+# Proje 7: Veritabanı Yedekleme ve Otomasyon Çalışması
+
+# 1. test veritabanının manuel yedeğini alma
+BACKUP DATABASE test
+TO DISK = 'C:\Backup\test_otomatik_yedek.bak'
+WITH FORMAT, INIT, NAME = 'Manuel Yedek';
+
+# Açıklama: test veritabanı SSMS üzerinden manuel olarak yedeklenir.
+powershell
+Copy
+Edit
+# 2. PowerShell script dosyası (yedekle.ps1)
+
+# Açıklama: SQL Server Express ortamında otomatik yedekleme yapar.
+# Ayrıca log dosyasına işlem zamanını kaydeder.
+
+$datetime = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
+$backupFile = "C:\Backup\test_yedek_$datetime.bak"
+$logFile = "C:\Backup\yedek_log.txt"
+
+Invoke-Sqlcmd -Query "BACKUP DATABASE test TO DISK = N'$backupFile' WITH INIT;" -ServerInstance "localhost\SQLEXPRESS"
+
+Add-Content -Path $logFile -Value "[$datetime] Yedekleme başarılı: $backupFile"
+plaintext
+Copy
+Edit
+# 3. Yedekleme klasörünün oluşturulması
+# Açıklama: C sürücüsünde 'C:\Backup' klasörü elle oluşturulur. Yedek ve log dosyaları bu klasöre kaydedilir.
+plaintext
+Copy
+Edit
+# 4. Script'in manuel çalıştırılması
+# Açıklama: PowerShell üzerinden şu komut ile çalıştırılır:
+# powershell -ExecutionPolicy Bypass -File "C:\Users\Khadija\Desktop\yedekle.ps1"
+plaintext
+Copy
+Edit
+# 5. Log dosyasının oluşması
+# Açıklama: Script çalışınca 'yedek_log.txt' dosyasına zaman damgalı bilgi yazılır.
+plaintext
+Copy
+Edit
+# 6. Windows Görev Zamanlayıcı ayarları
+
+# Genel sekmesi:
+# Görev adı: SQL Auto Backup
+# En yüksek ayrıcalıkla çalıştır seçeneği işaretlenir
+
+# Tetikleyici sekmesi:
+# Günlük saat 22:00 olarak ayarlanır
+
+# Eylem sekmesi:
+# Program/script: powershell
+# Argument: -ExecutionPolicy Bypass -File "C:\Users\Khadija\Desktop\yedekle.ps1"
+
+# Açıklama: Bu görev her gün otomatik olarak yedek alır.
+plaintext
+Copy
+Edit
+# 7. Görevin manuel olarak test edilmesi
+# Açıklama: Görev Zamanlayıcı’dan “Run” seçeneği ile çalıştırılır.
+plaintext
+Copy
+Edit
+# 8. Otomatik alınan yedek ve log kontrolü
+# Açıklama: Klasörde yeni .bak ve .txt dosyaları görünür. Her işlem için log satırı ekl
