@@ -1,0 +1,91 @@
+﻿--2.1 Tam Yedek Alma'
+
+BACKUP DATABASE WideWorldImporters
+TO DISK = 'C:\Program Files\Microsoft SQL Server\MSSQL16.SQLEXPRESS\MSSQL\Backup\WWI_Full.bak'
+WITH FORMAT, INIT, NAME = 'Tam Yedek';
+
+
+
+
+
+--2.2 Fark Yedekleme
+
+BACKUP DATABASE WideWorldImporters
+TO DISK = 'C:\Program Files\Microsoft SQL Server\MSSQL16.SQLEXPRESS\MSSQL\Backup\WWI_Diff.bak'
+WITH DIFFERENTIAL, INIT, NAME = 'Fark Yedek';
+
+
+
+--2.3  Transaction Log Yedekleme
+
+BACKUP LOG WideWorldImporters
+TO DISK = 'C:\Program Files\Microsoft SQL Server\MSSQL16.SQLEXPRESS\MSSQL\Backup\WWI_Log.trn'
+WITH INIT, NAME = 'Log Yedek';
+
+
+--2.3.1 Felaketten kurtarma (Tabloyu Sil)
+-- Temporal özelliği kapat
+CREATE DATABASE KurtarmaTestDB;
+USE KurtarmaTestDB;
+
+CREATE TABLE FelaketTablosu (
+    ID INT PRIMARY KEY,
+    Ad NVARCHAR(50)
+);
+
+INSERT INTO FelaketTablosu VALUES (1, 'Khadija'), (2, 'Backup');
+
+
+BACKUP DATABASE KurtarmaTestDB
+TO DISK = 'C:\Program Files\Microsoft SQL Server\MSSQL16.SQLEXPRESS\MSSQL\Backup\KurtarmaTestDB.bak'
+WITH FORMAT, INIT, NAME = 'Kurtarma Test Veritabanı';
+
+
+--2.3.1 Felaketten kurtarma (Tabloyu Sil)
+-- Temporal özelliği kapat
+
+DROP TABLE FelaketTablosu;
+
+
+-- Geri Yükleme (Restore)
+
+USE master;
+GO
+ALTER DATABASE KurtarmaTestDB SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+
+RESTORE DATABASE KurtarmaTestDB
+FROM DISK = 'C:\Program Files\Microsoft SQL Server\MSSQL16.SQLEXPRESS\MSSQL\Backup\KurtarmaTestDB.bak'
+WITH REPLACE;
+
+ALTER DATABASE KurtarmaTestDB SET MULTI_USER;
+
+-- Kontrol Et
+SELECT * FROM KurtarmaTestDB.dbo.FelaketTablosu;
+
+
+
+
+
+
+
+
+
+--2.2.4 Otomatik Yedekleme (Zamanlayıcı ile)
+BACKUP DATABASE KurtarmaTestDB
+TO DISK = 'C:\Program Files\Microsoft SQL Server\MSSQL16.SQLEXPRESS\MSSQL\Backup\KurtarmaTestDB_Auto.bak'
+WITH INIT, NAME = 'Otomatik Günlük Yedek';
+
+
+
+--2.2.5 Test Yedekleme Senaryoları
+
+RESTORE DATABASE KurtarmaTestDB_Test
+FROM DISK = 'C:\Program Files\Microsoft SQL Server\MSSQL16.SQLEXPRESS\MSSQL\Backup\KurtarmaTestDB_Auto.bak'
+WITH MOVE 'KurtarmaTestDB' TO 'C:\Program Files\Microsoft SQL Server\MSSQL16.SQLEXPRESS\MSSQL\DATA\KurtarmaTestDB_Test.mdf',
+     MOVE 'KurtarmaTestDB_log' TO 'C:\Program Files\Microsoft SQL Server\MSSQL16.SQLEXPRESS\MSSQL\DATA\KurtarmaTestDB_Test.ldf',
+     REPLACE;
+
+
+--kontrol zamani
+
+SELECT * FROM KurtarmaTestDB_Test.dbo.FelaketTablosu;
