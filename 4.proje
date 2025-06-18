@@ -1,0 +1,78 @@
+#Proje 4: Veritabanı Yük Dengeleme ve Dağıtık Veritabanı Yapıları
+
+# 1. Replikasyon Simülasyonu – Veritabanı Oluşturma
+CREATE DATABASE PublisherDB;
+CREATE DATABASE SubscriberDB;
+
+# Açıklama: Replikasyon işlemi için iki ayrı veritabanı oluşturulur.
+
+# 2. Her iki veritabanında da Customers tablosunun oluşturulması
+USE PublisherDB;
+CREATE TABLE Customers (
+    CustomerID INT PRIMARY KEY,
+    CustomerName NVARCHAR(100)
+);
+
+USE SubscriberDB;
+CREATE TABLE Customers (
+    CustomerID INT PRIMARY KEY,
+    CustomerName NVARCHAR(100)
+);
+
+# Açıklama: Verilerin aktarılması için her iki veritabanında da aynı yapıda tablo oluşturulur.
+
+# 3. PublisherDB veritabanına örnek müşteri verisi eklenmesi
+USE PublisherDB;
+INSERT INTO Customers (CustomerID, CustomerName)
+VALUES (1, 'Ali'), (2, 'Khadija'), (3, 'Sora');
+
+# Açıklama: Publisher veritabanına müşteri verileri manuel olarak eklenir.
+
+# 4. Verilerin SubscriberDB’ye manuel olarak kopyalanması
+USE SubscriberDB;
+INSERT INTO Customers (CustomerID, CustomerName)
+SELECT CustomerID, CustomerName FROM PublisherDB.dbo.Customers;
+
+# Açıklama: Publisher veritabanındaki veriler Subscriber veritabanına aktarılır. Bu işlem replikasyonu simüle eder.
+
+# 5. Yük dengeleme için PrimaryDB ve MirrorDB veritabanlarının oluşturulması
+CREATE DATABASE PrimaryDB;
+CREATE DATABASE MirrorDB;
+
+# Açıklama: Yük dengeleme simülasyonu için iki veritabanı hazırlanır.
+
+# 6. Her iki veritabanına Orders tablosunun oluşturulması
+USE PrimaryDB;
+CREATE TABLE Orders (
+    OrderID INT PRIMARY KEY,
+    ProductName NVARCHAR(100)
+);
+
+USE MirrorDB;
+CREATE TABLE Orders (
+    OrderID INT PRIMARY KEY,
+    ProductName NVARCHAR(100)
+);
+
+# Açıklama: Sipariş verilerinin tutulacağı tablolar hem ana hem de yedek veritabanına eklenir.
+
+# 7. PrimaryDB veritabanına örnek veri eklenmesi
+USE PrimaryDB;
+
+INSERT INTO Orders (OrderID, ProductName)
+VALUES (1, 'Mouse'), (2, 'Keyboard'), (3, 'Monitor');
+
+# Açıklama: Ana veritabanına örnek sipariş verileri eklenir.
+
+# 8. Verilerin MirrorDB’ye manuel olarak aktarılması
+USE MirrorDB;
+INSERT INTO Orders (OrderID, ProductName)
+SELECT OrderID, ProductName FROM PrimaryDB.dbo.Orders;
+
+# Açıklama: Primary veritabanındaki veriler manuel olarak Mirror veritabanına kopyalanır.
+
+# 9. Hata senaryosu durumunda MirrorDB’den veri okunması
+USE MirrorDB;
+SELECT * FROM Orders;
+
+# Açıklama: Ana veritabanı çalışmazsa sistem yedek veritabanından veri okumaya devam eder.
