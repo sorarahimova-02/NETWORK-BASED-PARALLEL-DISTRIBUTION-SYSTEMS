@@ -1,0 +1,116 @@
+﻿--3.1. Erişim Yönetimi (Kullanıcı Yetkilendirme
+
+-- 1. SQL Server giriş hesabı oluştur
+CREATE LOGIN guvenlik_user WITH PASSWORD = 'Guvenlik123!';
+
+-- 2. Bu login'e bağlı kullanıcı oluştur
+USE KurtarmaTestDB;
+GO
+CREATE USER guvenlik_user FOR LOGIN guvenlik_user;
+
+
+-- 3. db_datareader rolüne ekle → sadece okuma izni verir
+EXEC sp_addrolemember 'db_datareader', 'guvenlik_user';
+
+
+--3.2 Transparent Data Encryption (TDE) 
+
+USE master;
+GO
+CREATE MASTER KEY ENCRYPTION BY PASSWORD = 'StrongMasterKey123!';
+
+
+-- Serifika olustur
+CREATE CERTIFICATE KurtarmaCert
+WITH SUBJECT = 'KurtarmaTestDB için TDE Sertifikası';
+
+
+
+
+
+
+
+--Veritabanında Encryption Key Oluştur
+-- Basit kolon şifreleme örneği
+SELECT 
+    Ad,
+    ENCRYPTBYPASSPHRASE('guvenlik', Ad) AS SifreliAd
+FROM FelaketTablosu;
+
+
+
+
+
+--TDE’yi Aktif Et
+SELECT name, is_encrypted
+FROM sys.databases
+WHERE name = 'KurtarmaTestDB';
+
+
+
+
+--3.3 Klasik Kullanıcı Girişi Simülasyonu
+USE WideWorldImporters;
+GO
+
+-- Güvenli olmayan (tehlikeli) yöntem:
+DECLARE @input NVARCHAR(100) = ''' OR 1=1 --';
+EXEC('SELECT * FROM Sales.Customers WHERE CustomerName = ''' + @input + '''');
+
+
+
+
+--Güvenli yöntem (Parametreli sorgu simülasyonu)
+--Sonuç: Injection çalışmaz, çünkü sistem metni “tek bir parametre” olarak görür.
+
+DECLARE @input NVARCHAR(100) = ''' OR 1=1 --';
+DECLARE @sql NVARCHAR(MAX) = N'SELECT * FROM Sales.Customers WHERE CustomerName = @name';
+EXEC sp_executesql @sql, N'@name NVARCHAR(100)', @name = @input;
+
+
+
+
+
+-- 4. Audit Logları
+
+-- Audit dosyasının kayıt yeri
+USE master;
+GO
+
+CREATE SERVER AUDIT KullaniciDenetimi
+TO FILE (
+    FILEPATH = 'C:\AuditLogs\',
+    MAXSIZE = 1 GB,
+    MAX_FILES = 10,
+    RESERVE_DISK_SPACE = OFF
+);
+
+
+
+-- 4.2 Audit’i Aktif Et
+
+ALTER SERVER AUDIT KullaniciDenetimi
+WITH (STATE = ON);
+
+
+
+
+
+
+
+--4.3 Audit Specification (Hangi tablo/olay izlensin)
+USE WideWorldImporters;
+GO
+
+
+CREATE DATABASE AUDIT SPECIFICATION DenetimSpec
+FOR SERVER AUDIT KullaniciDenetimi
+ADD (SELECT, INSERT, UPDATE, DELETE 
+    ON Sales.Customers BY PUBLIC)
+WITH (STATE = ON);
+
+
+
+
+
+
