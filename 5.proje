@@ -1,0 +1,51 @@
+# Proje 5: Veri Temizleme ve ETL Süreçleri Tasarımı
+
+# 1. DimCustomer ve FactInternetSales tabloları inceleniyor
+# Açıklama: Veritabanına bağlanıldı, analiz için kullanılacak tablolar kontrol edildi.
+
+# 2. NULL olan e-posta adreslerini "unknown@example.com" ile güncelleme
+UPDATE DimCustomer
+SET EmailAddress = 'unknown@example.com'
+WHERE EmailAddress IS NULL;
+
+# Açıklama: Eksik e-posta bilgileri varsayılan değer ile dolduruldu.
+
+# 3. NULL olan doğum tarihlerini varsayılan tarih ile güncelleme
+UPDATE DimCustomer
+SET BirthDate = '1980-01-01'
+WHERE BirthDate IS NULL;
+
+# Açıklama: Doğum tarihi olmayan kayıtlara standart bir tarih atandı.
+
+# 4. Negatif sipariş miktarlarını pozitife çevirme
+UPDATE FactInternetSales
+SET OrderQuantity = ABS(OrderQuantity)
+WHERE OrderQuantity < 0;
+
+# Açıklama: Hatalı (negatif) sipariş adetleri düzeltildi.
+
+# 5. Ad ve soyadı birleştirerek yeni sütun oluşturma (FullName)
+ALTER TABLE DimCustomer
+ADD FullName AS FirstName + ' ' + LastName;
+
+# Açıklama: Ad ve soyadı birleştirilerek okunması kolay bir sütun oluşturuldu.
+
+# 6. Geliri dolar cinsine çevirme (1 USD = 28 TL)
+ALTER TABLE DimCustomer
+ADD IncomeUSD AS CAST(YearlyIncome / 28 AS DECIMAL(10,2));
+
+# Açıklama: Yıllık gelirler TL'den dolara çevrilerek yeni bir sütun eklendi.
+
+# 7. OrderDateKey sütununu gerçek tarih formatına dönüştürme
+SELECT OrderDateKey,
+       CONVERT(DATE, CONVERT(VARCHAR, OrderDateKey)) AS OrderDate
+FROM FactInternetSales;
+
+# Açıklama: Sayı formatında tutulan tarih bilgisi okunabilir hale getirildi.
+
+# 8. Temizlenmiş müşteri verilerini yeni tabloya aktarma
+SELECT CustomerKey, FullName, EmailAddress, BirthDate, IncomeUSD
+INTO CleanedCustomerData
+FROM DimCustomer;
+
+# Açıklama: Temiz ve dönüştürülmüş veriler yeni tabloya yüklendi.
