@@ -1,0 +1,62 @@
+# Proje 6: Veritabanı Yükseltme ve Sürüm Yönetimi
+
+# 1. SQL Server versiyonunu kontrol etme
+SELECT @@VERSION;
+
+# Açıklama: Sunucuda yüklü olan SQL Server sürümünü öğrenmek için kullanılır.
+
+# 2. test veritabanının yedeğini alma
+BACKUP DATABASE test
+TO DISK = 'C:\Backup\test_yedek.bak'
+WITH FORMAT, INIT, NAME = 'Test Veritabani Yedegi';
+
+# Açıklama: test adlı veritabanının tam yedeği alınır.
+
+# 3. test_restore adında yeni veritabanına yedeği geri yükleme
+RESTORE DATABASE test_restore
+FROM DISK = 'C:\Backup\test_yedek.bak'
+WITH MOVE 'test' TO 'C:\Program Files\Microsoft SQL Server\MSSQL16.SQLEXPRESS\MSSQL\DATA\test_restore.mdf',
+     MOVE 'test_log' TO 'C:\Program Files\Microsoft SQL Server\MSSQL16.SQLEXPRESS\MSSQL\DATA\test_restore_log.ldf',
+     REPLACE;
+
+# Açıklama: test yedeği yeni bir isimle geri yüklenir. Yükseltme veya test için kullanılır.
+
+# 4. Şema değişikliklerini kaydedecek tabloyu oluşturma
+CREATE TABLE SchemaChangesLog (
+    ChangeID INT IDENTITY(1,1) PRIMARY KEY,
+    EventType NVARCHAR(100),
+    ObjectName NVARCHAR(200),
+    SqlCommand NVARCHAR(MAX),
+    ChangeDate DATETIME DEFAULT GETDATE()
+);
+
+# Açıklama: Yapısal değişiklikleri kayıt altına almak için kullanılacak log tablosu oluşturulur.
+
+# 5. DDL Trigger oluşturma – yapısal değişiklikleri takip etmek için
+CREATE TRIGGER trg_SchemaChangeLogger
+ON DATABASE
+FOR CREATE_TABLE, ALTER_TABLE, DROP_TABLE
+AS
+BEGIN
+    INSERT INTO SchemaChangesLog (EventType, ObjectName, SqlCommand)
+    SELECT EVENTDATA().value('(/EVENT_INSTANCE/EventType)[1]', 'NVARCHAR(100)'),
+           EVENTDATA().value('(/EVENT_INSTANCE/ObjectName)[1]', 'NVARCHAR(200)'),
+           EVENTDATA().value('(/EVENT_INSTANCE/TSQLCommand/CommandText)[1]', 'NVARCHAR(MAX)');
+END;
+
+# Açıklama: Tablo oluşturma, değiştirme veya silme gibi işlemler bu trigger ile loglanır.
+
+# 6. Trigger'ı test etmek için yeni tablo oluşturma
+CREATE TABLE TestTablo (
+    ID INT PRIMARY KEY,
+    Ad NVARCHAR(100)
+);
+
+# Açıklama: Trigger’ın çalıştığını test etmek için yeni bir tablo oluşturulur. Değişiklik log'a kaydedilir.
+
+# 7. Geri dönüş planı – test_restore veritabanını tekrar geri yükleme
+RESTORE DATABASE test_restore
+FROM DISK = 'C:\Backup\test_yedek.bak'
+WITH REPLACE;
+
+# Açıklama: Herhangi bir hata durumunda eski yedek kullanılarak geri dönüş yapılır.
